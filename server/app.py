@@ -4,12 +4,15 @@ from flask import Flask, request, make_response
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 
+
+
 from models import db, User, Review, Game
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.json.compact = False
+
 
 migrate = Migrate(app, db)
 
@@ -39,16 +42,30 @@ def games():
 
     return response
 
+# @app.route('/games')
+# def games():
+#     game_dict = [game.to_dict() for game in Game.query.all()]
+#     response = make_response(game_dict, 200)
+#     return response
+
 @app.route('/games/<int:id>')
 def game_by_id(id):
     game = Game.query.filter(Game.id == id).first()
+    if game:
     
-    game_dict = game.to_dict()
+        game_dict = game.to_dict()
+        status = 200
 
-    response = make_response(
-        game_dict,
-        200
-    )
+        # response = make_response(
+        #     game_dict,
+        #     200
+        # )
+    else:
+        game_dict = {"error": "Game not found"}
+        status = 404
+
+    response = make_response(game_dict, status)
+
 
     return response
 
@@ -82,5 +99,58 @@ def users():
 
     return response
 
+@app.route('/reviews/<int:id>', methods=['GET','DELETE', 'PATCH'])
+def review_by_id(id):
+    review = Review.query.filter(Review.id==id).first()
+    if request.method == 'GET':
+        review_dict = review.to_dict()
+        response = make_response(review_dict, 200)
+        return response
+    elif request.method == 'DELETE':
+        db.session.delete(review)
+        db.session.commit()
+        response_body = {
+            'delete_successful': True,
+            'message': 'Review deleted.'
+        }
+        response = make_response(response_body, 200)
+        return response
+    elif request.method == 'PATCH':
+        for attr in request.form:
+            setattr(review, attr, request.form.get(attr))
+        db.session.add(review)
+        db.session.commit()
+
+        review_dict = review.to_dict()
+        response = make_response(review_dict, 200)
+        return response
+
+
+@app.route('/reviews', methods=['GET', 'POST'])
+def reviews():
+    if request.method == 'GET':
+        reviews = [rev.to_dict() for rev in Review.query.all()]
+        response = make_response(reviews, 200)
+        return response
+    elif request.method == 'POST':
+        new_review = Review(
+            score = request.form.get('score'),
+            comment = request.form.get('comment'),
+            game_id = request.form.get('game_id'),
+            user_id = request.form.get('score'),
+        )
+        db.session.add(new_review)
+        db.session.commit()
+
+        review_dict = new_review.to_dict()
+        response = make_response(
+            review_dict, 201
+        )
+        return response
+    
+
+        
+
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
+    

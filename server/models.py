@@ -8,6 +8,7 @@ metadata = MetaData(naming_convention={
 
 db = SQLAlchemy(metadata=metadata)
 
+
 class Game(db.Model, SerializerMixin):
     __tablename__ = 'games'
 
